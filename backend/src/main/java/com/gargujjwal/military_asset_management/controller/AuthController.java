@@ -1,0 +1,49 @@
+package com.gargujjwal.military_asset_management.controller;
+
+import com.gargujjwal.military_asset_management.dto.LoginRequest;
+import com.gargujjwal.military_asset_management.dto.LoginResponse;
+import com.gargujjwal.military_asset_management.dto.UserDto;
+import com.gargujjwal.military_asset_management.service.AuthService;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping(
+    path = "/api/auth",
+    consumes = MediaType.APPLICATION_JSON_VALUE,
+    produces = MediaType.APPLICATION_JSON_VALUE)
+@RequiredArgsConstructor
+public class AuthController {
+
+  private final AuthService authService;
+
+  @PostMapping("/login")
+  LoginResponse login(@Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
+    return authService.login(loginRequest, response);
+  }
+
+  @GetMapping("/logout")
+  void logout(HttpServletResponse response) {
+    authService.logout(response);
+  }
+
+  @GetMapping("/refresh-access-token")
+  String refreshSession(
+      @CookieValue(value = "refresh-token", defaultValue = "invalid") String refreshToken,
+      HttpServletResponse response) {
+    return authService.refreshSession(refreshToken);
+  }
+
+  @GetMapping("/me")
+  public UserDto getAuthenticatedMe() {
+    return authService.getCurrentUser();
+  }
+}
