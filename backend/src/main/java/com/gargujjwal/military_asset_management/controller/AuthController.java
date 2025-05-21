@@ -2,14 +2,18 @@ package com.gargujjwal.military_asset_management.controller;
 
 import com.gargujjwal.military_asset_management.dto.LoginRequest;
 import com.gargujjwal.military_asset_management.dto.LoginResponse;
+import com.gargujjwal.military_asset_management.dto.PasswordChangeReq;
 import com.gargujjwal.military_asset_management.dto.UserDto;
 import com.gargujjwal.military_asset_management.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,5 +49,17 @@ public class AuthController {
   @GetMapping("/me")
   public UserDto getAuthenticatedMe() {
     return authService.getCurrentUser();
+  }
+
+  @PatchMapping("/users/{username}/password")
+  public void changePassword(
+      @Valid @NotBlank @PathVariable String username,
+      @Valid @RequestBody PasswordChangeReq passwordChangeReq) {
+    authService.changePassword(username, passwordChangeReq);
+  }
+
+  @PostMapping("/users")
+  public void createNewUser(@Valid @RequestBody UserDto newUser) {
+    authService.createUser(newUser);
   }
 }

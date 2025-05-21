@@ -1,6 +1,7 @@
 package com.gargujjwal.military_asset_management.advice;
 
 import com.gargujjwal.military_asset_management.dto.ErrorResponse;
+import com.gargujjwal.military_asset_management.exception.ConflictingResourceException;
 import com.gargujjwal.military_asset_management.exception.InvalidTokenException;
 import com.gargujjwal.military_asset_management.exception.ResourceNotFoundException;
 import com.gargujjwal.military_asset_management.exception.TokenGenerationException;
@@ -326,6 +327,13 @@ public class ErrorResponseAdvice extends ResponseEntityExceptionHandler {
     log.error("Couldn't generate token: {}", ex.getMessage());
     var error = new ErrorResponse(GENERIC_ERROR_MESSAGE);
     return buildResponseEntity(error, HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
+  @ExceptionHandler(ConflictingResourceException.class)
+  protected ResponseEntity<Object> handleConflictingResourceException(
+      ConflictingResourceException ex) {
+    var error = new ErrorResponse("Resource already exists", List.of(ex.getMessage()));
+    return buildResponseEntity(error, HttpStatus.CONFLICT);
   }
 
   private ResponseEntity<Object> buildResponseEntity(ErrorResponse error, HttpStatus status) {
