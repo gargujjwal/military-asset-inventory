@@ -23,17 +23,17 @@ public class UserController {
 
   private final UserService userService;
 
-  @GetMapping
+  @GetMapping(consumes = MediaType.ALL_VALUE)
   public List<UserDto> getAllUsers() {
     return userService.getAllUsers();
   }
 
-  @GetMapping("/{username}")
+  @GetMapping(path = "/{username}", consumes = MediaType.ALL_VALUE)
   public UserDto getUserByUsername(@Valid @NotBlank @PathVariable String username) {
     return userService.getUserByUsername(username);
   }
 
-  @DeleteMapping("/{username}")
+  @DeleteMapping(path = "/{username}", consumes = MediaType.ALL_VALUE)
   public void deleteUser(@Valid @NotBlank @PathVariable String username) {
     userService.deleteUser(username);
   }

@@ -1,7 +1,7 @@
 package com.gargujjwal.military_asset_management.service;
 
+import com.gargujjwal.military_asset_management.dto.AccessTokenResponse;
 import com.gargujjwal.military_asset_management.dto.LoginRequest;
-import com.gargujjwal.military_asset_management.dto.LoginResponse;
 import com.gargujjwal.military_asset_management.dto.PasswordChangeReq;
 import com.gargujjwal.military_asset_management.dto.UserDto;
 import com.gargujjwal.military_asset_management.entity.User;
@@ -33,7 +33,7 @@ public class AuthService {
   private final JWTService jwtService;
   private final UserMapper userMapper;
 
-  public LoginResponse login(LoginRequest loginRequest, HttpServletResponse response) {
+  public AccessTokenResponse login(LoginRequest loginRequest, HttpServletResponse response) {
     log.info("Login request for user: {}", loginRequest.username());
     UserDetails user = userService.loadUserByUsername(loginRequest.username());
     if (user == null) throw new ResourceNotFoundException("User not found");
@@ -48,7 +48,7 @@ public class AuthService {
     Cookie refreshTokenCookie = createRefreshTokenCookie(refreshToken);
     response.addCookie(refreshTokenCookie);
 
-    return new LoginResponse(accessToken);
+    return new AccessTokenResponse(accessToken);
   }
 
   public void logout(HttpServletResponse response) {
@@ -60,7 +60,7 @@ public class AuthService {
     SecurityContextHolder.clearContext();
   }
 
-  public String refreshSession(String refreshToken) {
+  public AccessTokenResponse refreshSession(String refreshToken) {
     if (!jwtService.isValidToken(refreshToken)) {
       throw new BadCredentialsException("Invalid refresh token");
     }
@@ -69,7 +69,7 @@ public class AuthService {
     if (user == null) {
       throw new ResourceNotFoundException("User not found");
     }
-    return jwtService.generateAccessToken(user);
+    return new AccessTokenResponse(jwtService.generateAccessToken(user));
   }
 
   public UserDto getCurrentUser() {

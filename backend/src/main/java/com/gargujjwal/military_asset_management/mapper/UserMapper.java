@@ -16,5 +16,6 @@ public interface UserMapper {
   @InheritInverseConfiguration
   @Mapping(target = "passwordHash", ignore = true)
   @Mapping(target = "authorities", ignore = true)
+  @Mapping(target = "userBaseAssignments", ignore = true)
   User toEntity(UserDto dto);
 }

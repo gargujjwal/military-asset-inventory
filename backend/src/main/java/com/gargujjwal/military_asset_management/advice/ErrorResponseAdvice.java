@@ -5,6 +5,7 @@ import com.gargujjwal.military_asset_management.exception.ConflictingResourceExc
 import com.gargujjwal.military_asset_management.exception.InvalidTokenException;
 import com.gargujjwal.military_asset_management.exception.ResourceNotFoundException;
 import com.gargujjwal.military_asset_management.exception.TokenGenerationException;
+import com.gargujjwal.military_asset_management.exception.UnauthorizedException;
 import java.util.Arrays;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -334,6 +335,12 @@ public class ErrorResponseAdvice extends ResponseEntityExceptionHandler {
       ConflictingResourceException ex) {
     var error = new ErrorResponse("Resource already exists", List.of(ex.getMessage()));
     return buildResponseEntity(error, HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(UnauthorizedException.class)
+  protected ResponseEntity<Object> handleUnauthorizedException(UnauthorizedException ex) {
+    var error = new ErrorResponse("Unauthorized", List.of(ex.getMessage()));
+    return buildResponseEntity(error, HttpStatus.UNAUTHORIZED);
   }
 
   private ResponseEntity<Object> buildResponseEntity(ErrorResponse error, HttpStatus status) {

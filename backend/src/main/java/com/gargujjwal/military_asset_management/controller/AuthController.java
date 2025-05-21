@@ -1,7 +1,7 @@
 package com.gargujjwal.military_asset_management.controller;
 
+import com.gargujjwal.military_asset_management.dto.AccessTokenResponse;
 import com.gargujjwal.military_asset_management.dto.LoginRequest;
-import com.gargujjwal.military_asset_management.dto.LoginResponse;
 import com.gargujjwal.military_asset_management.dto.PasswordChangeReq;
 import com.gargujjwal.military_asset_management.dto.UserDto;
 import com.gargujjwal.military_asset_management.service.AuthService;
@@ -30,23 +30,24 @@ public class AuthController {
   private final AuthService authService;
 
   @PostMapping("/login")
-  LoginResponse login(@Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
+  AccessTokenResponse login(
+      @Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
     return authService.login(loginRequest, response);
   }
 
-  @GetMapping("/logout")
+  @GetMapping(path = "/logout", consumes = MediaType.ALL_VALUE)
   void logout(HttpServletResponse response) {
     authService.logout(response);
   }
 
-  @GetMapping("/refresh-access-token")
-  String refreshSession(
+  @GetMapping(path = "/refresh-access-token", consumes = MediaType.ALL_VALUE)
+  AccessTokenResponse refreshSession(
       @CookieValue(value = "refresh-token", defaultValue = "invalid") String refreshToken,
       HttpServletResponse response) {
     return authService.refreshSession(refreshToken);
   }
 
-  @GetMapping("/me")
+  @GetMapping(path = "/me", consumes = MediaType.ALL_VALUE)
   public UserDto getAuthenticatedMe() {
     return authService.getCurrentUser();
   }
