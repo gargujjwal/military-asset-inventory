@@ -12,6 +12,7 @@ import com.gargujjwal.military_asset_management.entity.InventoryTransaction;
 import com.gargujjwal.military_asset_management.entity.PurchaseTransaction;
 import com.gargujjwal.military_asset_management.entity.TransferTransaction;
 import java.util.List;
+import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.SubclassMapping;
@@ -19,7 +20,8 @@ import org.mapstruct.SubclassMappings;
 
 @Mapper(
     componentModel = "spring",
-    uses = {EquipmentMapper.class, UserMapper.class, BaseMapper.class})
+    uses = {EquipmentMapper.class, UserMapper.class, BaseMapper.class},
+    builder = @Builder(disableBuilder = true))
 public interface InventoryTransactionMapper {
 
   @SubclassMappings({
@@ -34,6 +36,7 @@ public interface InventoryTransactionMapper {
   @Mapping(target = "equipment", source = "inventory.equipment")
   InventoryTransactionDto toDto(InventoryTransaction transaction);
 
+  @Mapping(target = "inventory", ignore = true)
   AssignmentTransaction toAssignmentTransactionEntity(AssignmentTransactionDto dto);
 
   @Mapping(target = "inventory", ignore = true)

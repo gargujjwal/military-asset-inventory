@@ -1,13 +1,5 @@
 package com.gargujjwal.military_asset_management.service;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.gargujjwal.military_asset_management.constants.Role;
 import com.gargujjwal.military_asset_management.constants.TransactionType;
 import com.gargujjwal.military_asset_management.dto.AssignmentTransactionDto;
@@ -28,10 +20,7 @@ import com.gargujjwal.military_asset_management.entity.InventoryTransaction;
 import com.gargujjwal.military_asset_management.entity.PurchaseTransaction;
 import com.gargujjwal.military_asset_management.entity.TransferTransaction;
 import com.gargujjwal.military_asset_management.entity.User;
-import com.gargujjwal.military_asset_management.exception.InvalidRequestException;
-import com.gargujjwal.military_asset_management.exception.InventoryNotEnoughException;
-import com.gargujjwal.military_asset_management.exception.ResourceNotFoundException;
-import com.gargujjwal.military_asset_management.exception.UnauthorizedException;
+import com.gargujjwal.military_asset_management.exception.*;
 import com.gargujjwal.military_asset_management.filter.InventoryTransactionSpecification;
 import com.gargujjwal.military_asset_management.mapper.BaseMapper;
 import com.gargujjwal.military_asset_management.mapper.EquipmentMapper;
@@ -40,9 +29,14 @@ import com.gargujjwal.military_asset_management.repository.BaseRepository;
 import com.gargujjwal.military_asset_management.repository.EquipmentInventoryRepository;
 import com.gargujjwal.military_asset_management.repository.EquipmentInventoryTransactionRepository;
 import com.gargujjwal.military_asset_management.repository.TransferTransactionRepository;
-
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j(topic = "EQUIPMENT_INVENTORY_TRANSACTION_SERVICE")
@@ -191,6 +185,11 @@ public class EquipmentInventoryTransactionService {
           throw new InvalidRequestException("Destination base can't be same as source base");
         }
 
+        // can't move assets if source base doesn't have them either
+        if (!hasEnoughInventory(base, equipment, transferTransaction.getQuantityChange())) {
+          throw new InventoryNotEnoughException("Source base doesn't have enough inventory");
+        }
+
         transferTransaction.setResultingBalance(currentBalance);
         transferTransaction.setDoneBy(loggedInUser);
         transferTransaction.setInventory(inv);
@@ -267,7 +266,7 @@ public class EquipmentInventoryTransactionService {
       // delete the other transaction too
       TransferTransaction ttrans = (TransferTransaction) transaction;
       transferTransactionRepository
-          .findBySourceBaseAndDestBaseAndQuanityChangeAndInventory_EquipmentAndInventory_Base(
+          .findBySourceBaseAndDestBaseAndQuantityChangeAndDoneByAndInventory_EquipmentAndInventory_Base(
               ttrans.getDestBase(),
               ttrans.getSourceBase(),
               ttrans.getQuantityChange() * -1,
@@ -313,5 +312,13 @@ public class EquipmentInventoryTransactionService {
                     .transactions(inventoryTransactionMapper.toDto(en.getValue()))
                     .build())
         .toList();
+  }
+
+  private boolean hasEnoughInventory(Base base, Equipment equipment, int quantity) {
+    return base.getEquipmentInventory().stream()
+        .filter(inv -> inv.getEquipment().equals(equipment))
+        .findFirst()
+        .map(inv -> inv.getClosingBalance() >= Math.abs(quantity))
+        .orElse(false);
   }
 }

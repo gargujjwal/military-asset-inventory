@@ -15,5 +15,6 @@ public interface BaseMapper {
 
   @Mapping(target = "userBaseAssignments", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
+  @Mapping(target = "equipmentInventory", ignore = true)
   Base toEntity(BaseDto dto);
 }

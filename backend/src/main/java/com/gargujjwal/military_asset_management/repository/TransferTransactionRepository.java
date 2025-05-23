@@ -11,6 +11,11 @@ public interface TransferTransactionRepository extends JpaRepository<TransferTra
   void deleteBySourceBaseOrDestBase(Base source, Base dest);
 
   Optional<TransferTransaction>
-      findBySourceBaseAndDestBaseAndQuanityChangeAndInventory_EquipmentAndInventory_Base(
-          Base src, Base dest, int quantityChanged, User doneBy, Equipment equipment, Base base);
+      findBySourceBaseAndDestBaseAndQuantityChangeAndDoneByAndInventory_EquipmentAndInventory_Base(
+          Base sourceBase,
+          Base destBase,
+          int quantityChanged,
+          User doneBy,
+          Equipment equipment,
+          Base base);
 }
