@@ -1,5 +1,6 @@
 package com.gargujjwal.military_asset_management.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -8,44 +9,36 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
-@Table(name = "user_base_assignments")
+@Table(name = "equipments")
 @Getter
 @Setter
-@Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@AllArgsConstructor
-@NoArgsConstructor
-public class UserBaseAssignment {
-
+public class Equipment {
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   @Column(name = "id", nullable = false)
   @EqualsAndHashCode.Include
   private String id;
 
-  @Column(name = "is_active", nullable = false)
-  private Boolean isActive;
+  @Column(name = "name", nullable = false)
+  private String name;
 
-  @CreationTimestamp
-  @Column(name = "assignment_date", nullable = false, updatable = false)
-  private LocalDateTime assignmentDate;
+  @Column(name = "description", nullable = false)
+  private String description;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id", referencedColumnName = "id")
-  private User user;
+  @OneToMany(mappedBy = "equipment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+  private Set<EquipmentInventory> equipmentInventories = new HashSet<>();
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "base_id", referencedColumnName = "id")
-  private Base base;
+  @JoinColumn(name = "equipment_category_id", referencedColumnName = "id")
+  EquipmentCategory equipmentCategory;
 }

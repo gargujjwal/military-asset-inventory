@@ -2,10 +2,13 @@ package com.gargujjwal.military_asset_management.advice;
 
 import com.gargujjwal.military_asset_management.dto.ErrorResponse;
 import com.gargujjwal.military_asset_management.exception.ConflictingResourceException;
+import com.gargujjwal.military_asset_management.exception.InvalidRequestException;
 import com.gargujjwal.military_asset_management.exception.InvalidTokenException;
+import com.gargujjwal.military_asset_management.exception.InventoryNotEnoughException;
 import com.gargujjwal.military_asset_management.exception.ResourceNotFoundException;
 import com.gargujjwal.military_asset_management.exception.TokenGenerationException;
 import com.gargujjwal.military_asset_management.exception.UnauthorizedException;
+import jakarta.validation.ConstraintViolationException;
 import java.util.Arrays;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -341,6 +344,31 @@ public class ErrorResponseAdvice extends ResponseEntityExceptionHandler {
   protected ResponseEntity<Object> handleUnauthorizedException(UnauthorizedException ex) {
     var error = new ErrorResponse("Unauthorized", List.of(ex.getMessage()));
     return buildResponseEntity(error, HttpStatus.UNAUTHORIZED);
+  }
+
+  @ExceptionHandler(InvalidRequestException.class)
+  protected ResponseEntity<Object> handleInvalidRequestException(InvalidRequestException ex) {
+    var error = new ErrorResponse("Bad Request", List.of(ex.getMessage()));
+    return buildResponseEntity(error, HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(ConstraintViolationException.class)
+  protected ResponseEntity<Object> handleConstraintViolationException(
+      ConstraintViolationException ex) {
+    var error =
+        new ErrorResponse(
+            "Constraint violation",
+            ex.getConstraintViolations().stream()
+                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+                .toList());
+    return buildResponseEntity(error, HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(InventoryNotEnoughException.class)
+  protected ResponseEntity<Object> handleInventoryNotEnoughException(
+      InventoryNotEnoughException ex) {
+    var error = new ErrorResponse("Error while executing transaction", List.of(ex.getMessage()));
+    return buildResponseEntity(error, HttpStatus.FORBIDDEN);
   }
 
   private ResponseEntity<Object> buildResponseEntity(ErrorResponse error, HttpStatus status) {

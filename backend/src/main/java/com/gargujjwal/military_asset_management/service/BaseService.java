@@ -9,6 +9,7 @@ import com.gargujjwal.military_asset_management.exception.ConflictingResourceExc
 import com.gargujjwal.military_asset_management.exception.ResourceNotFoundException;
 import com.gargujjwal.military_asset_management.mapper.BaseMapper;
 import com.gargujjwal.military_asset_management.repository.BaseRepository;
+import com.gargujjwal.military_asset_management.repository.TransferTransactionRepository;
 import com.gargujjwal.military_asset_management.repository.UserBaseAssignmentRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class BaseService {
   private final BaseRepository baseRepository;
   private final BaseMapper baseMapper;
   private final UserService userService;
+  private final TransferTransactionRepository transferTransactionRepository;
 
   @PreAuthorize("hasRole('ADMIN')")
   public List<BaseDto> getAllBases() {
@@ -37,6 +39,7 @@ public class BaseService {
   }
 
   @PreAuthorize("hasRole('ADMIN')")
+  @Transactional
   public void createBase(BaseDto newBase) {
     Base base = baseMapper.toEntity(newBase);
     base.setId(null);
@@ -44,10 +47,14 @@ public class BaseService {
   }
 
   @PreAuthorize("hasRole('ADMIN')")
+  @Transactional
   public void deleteBase(String id) {
     // make sure base exists
-    findBaseById(id);
+    Base base = findBaseById(id);
     baseRepository.deleteById(id);
+
+    // delete any transfer transaction to maintain referential integrity
+    transferTransactionRepository.deleteBySourceBaseOrDestBase(base, base);
   }
 
   @PreAuthorize("hasRole('ADMIN')")
@@ -83,6 +90,15 @@ public class BaseService {
     UserBaseAssignment newAssignment =
         UserBaseAssignment.builder().isActive(true).user(user).base(base).build();
     ubAssignmentRepository.save(newAssignment);
+  }
+
+  public BaseDto getUserAssignedBase(String username) {
+    User user = (User) userService.loadUserByUsername(username);
+    return baseMapper.toDto(
+        ubAssignmentRepository
+            .findByUserAndIsActive(user, true)
+            .orElseThrow(() -> new ResourceNotFoundException("No based assigned to user"))
+            .getBase());
   }
 
   public boolean canAccessBase(String baseId) {

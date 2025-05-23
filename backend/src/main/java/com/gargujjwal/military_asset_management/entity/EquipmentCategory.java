@@ -8,20 +8,18 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
-@Table(name = "bases")
+@Table(name = "equipment_categories")
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-public class Base {
+public class EquipmentCategory {
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
@@ -32,16 +30,12 @@ public class Base {
   @Column(name = "name", nullable = false)
   private String name;
 
-  @Column(name = "location", nullable = false)
-  private String location;
+  @Column(name = "description")
+  private String description;
 
-  @CreationTimestamp
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private LocalDateTime createdAt;
+  @Column(name = "unit_of_measure", nullable = false)
+  private String unitOfMeasure;
 
-  @OneToMany(mappedBy = "base", cascade = CascadeType.ALL, orphanRemoval = true)
-  private Set<UserBaseAssignment> userBaseAssignments = new HashSet<>();
-
-  @OneToMany(mappedBy = "base", cascade = CascadeType.ALL, orphanRemoval = true)
-  private Set<EquipmentInventory> equipmentInventory = new HashSet<>();
+  @OneToMany(mappedBy = "equipmentCategory", cascade = CascadeType.ALL, orphanRemoval = true)
+  Set<Equipment> equipments = new HashSet<>();
 }

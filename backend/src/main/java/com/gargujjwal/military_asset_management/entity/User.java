@@ -46,7 +46,7 @@ public class User implements UserDetails {
   private String fullName;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "role", nullable = false)
+  @Column(name = "role", nullable = false, updatable = false)
   private Role role;
 
   @CreationTimestamp
@@ -54,7 +54,7 @@ public class User implements UserDetails {
   private LocalDateTime createdAt;
 
   @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-  Set<UserBaseAssignment> userBaseAssignments = new HashSet<>();
+  private Set<UserBaseAssignment> userBaseAssignments = new HashSet<>();
 
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -64,5 +64,9 @@ public class User implements UserDetails {
   @Override
   public String getPassword() {
     return passwordHash;
+  }
+
+  public boolean isAdmin() {
+    return this.role.equals(Role.ADMIN);
   }
 }
