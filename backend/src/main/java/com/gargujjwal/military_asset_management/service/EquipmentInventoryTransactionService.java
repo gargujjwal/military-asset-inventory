@@ -1,6 +1,15 @@
 package com.gargujjwal.military_asset_management.service;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.gargujjwal.military_asset_management.constants.Role;
+import com.gargujjwal.military_asset_management.constants.TransactionType;
 import com.gargujjwal.military_asset_management.dto.AssignmentTransactionDto;
 import com.gargujjwal.military_asset_management.dto.BaseDto;
 import com.gargujjwal.military_asset_management.dto.ExpenditureTransactionDto;
@@ -10,6 +19,7 @@ import com.gargujjwal.military_asset_management.dto.PurchaseTransactionDto;
 import com.gargujjwal.military_asset_management.dto.TransactionGroupedByBaseDto;
 import com.gargujjwal.military_asset_management.dto.TransferTransactionDto;
 import com.gargujjwal.military_asset_management.entity.AssignmentTransaction;
+import com.gargujjwal.military_asset_management.entity.AuditLog;
 import com.gargujjwal.military_asset_management.entity.Base;
 import com.gargujjwal.military_asset_management.entity.Equipment;
 import com.gargujjwal.military_asset_management.entity.EquipmentInventory;
@@ -29,14 +39,10 @@ import com.gargujjwal.military_asset_management.mapper.InventoryTransactionMappe
 import com.gargujjwal.military_asset_management.repository.BaseRepository;
 import com.gargujjwal.military_asset_management.repository.EquipmentInventoryRepository;
 import com.gargujjwal.military_asset_management.repository.EquipmentInventoryTransactionRepository;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import com.gargujjwal.military_asset_management.repository.TransferTransactionRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j(topic = "EQUIPMENT_INVENTORY_TRANSACTION_SERVICE")
@@ -50,6 +56,8 @@ public class EquipmentInventoryTransactionService {
   private final BaseService baseService;
   private final EquipmentInventoryRepository equipmentInventoryRepository;
   private final EquipmentMapper equipmentMapper;
+  private final AuditService auditService;
+  private final TransferTransactionRepository transferTransactionRepository;
 
   @PreAuthorize("hasRole('ADMIN')")
   @Transactional(readOnly = true)
@@ -187,10 +195,38 @@ public class EquipmentInventoryTransactionService {
         transferTransaction.setDoneBy(loggedInUser);
         transferTransaction.setInventory(inv);
         inventoryTransactionRepository.save(transferTransaction);
+
+        // create transfer transaction for other base too
+        // reverse the quantity change
+        InventoryTransaction trans =
+            TransferTransaction.builder()
+                .sourceBase(transferTransaction.getDestBase())
+                .destBase(transferTransaction.getSourceBase())
+                .notes(transferTransaction.getNotes())
+                .build();
+        trans.setDoneBy(loggedInUser);
+        trans.setQuantityChange(transferTransaction.getQuantityChange());
+        createTransaction(
+            inventoryTransactionMapper.toDto(trans), transferTransaction.getDestBase().getId());
         break;
       default:
         throw new IllegalArgumentException(
             "Transaction type not supported: " + transactionDto.getTransactionType());
+    }
+
+    // flow of application should not stop cuz i couldn't log
+    try {
+      auditService.saveAuditLog(
+          AuditLog.builder()
+              .action("CREATE")
+              .transactionType(transactionDto.getTransactionType())
+              .quantityChanged(transactionDto.getQuantityChange())
+              .doneBy(loggedInUser.getFullName())
+              .equipmentName(equipment.getName())
+              .build());
+
+    } catch (Exception e) {
+      log.warn("Error while saving audit log", e);
     }
   }
 
@@ -211,6 +247,57 @@ public class EquipmentInventoryTransactionService {
 
     // delete the transaction
     inventoryTransactionRepository.delete(transaction);
+
+    // flow of application should not stop cuz i couldn't log
+    try {
+      User loggedInUser = userService.getLoggedInUser();
+      auditService.saveAuditLog(
+          AuditLog.builder()
+              .action("CREATE")
+              .transactionType(getTransactionType(transaction))
+              .quantityChanged(transaction.getQuantityChange())
+              .doneBy(loggedInUser.getFullName())
+              .equipmentName(transaction.getInventory().getEquipment().getName())
+              .build());
+    } catch (Exception e) {
+      log.warn("Error while saving audit log", e);
+    }
+
+    if (transaction instanceof TransferTransaction) {
+      // delete the other transaction too
+      TransferTransaction ttrans = (TransferTransaction) transaction;
+      transferTransactionRepository
+          .findBySourceBaseAndDestBaseAndQuanityChangeAndInventory_EquipmentAndInventory_Base(
+              ttrans.getDestBase(),
+              ttrans.getSourceBase(),
+              ttrans.getQuantityChange() * -1,
+              ttrans.getDoneBy(),
+              ttrans.getInventory().getEquipment(),
+              ttrans.getInventory().getBase())
+          .ifPresentOrElse(
+              transferTransactionRepository::delete,
+              () ->
+                  log.warn(
+                      "Transfer transaction not found for source base: {}, dest base: {}, quantity:"
+                          + " {}",
+                      ttrans.getSourceBase().getName(),
+                      ttrans.getDestBase().getName(),
+                      ttrans.getQuantityChange() * -1));
+    }
+  }
+
+  private TransactionType getTransactionType(InventoryTransaction trans) {
+    if (trans instanceof AssignmentTransaction) {
+      return TransactionType.ASSIGNMENT;
+    } else if (trans instanceof ExpenditureTransaction) {
+      return TransactionType.EXPENDITURE;
+    } else if (trans instanceof PurchaseTransaction) {
+      return TransactionType.PURCHASE;
+    } else if (trans instanceof TransferTransaction) {
+      return TransactionType.TRANSFER;
+    } else {
+      throw new IllegalArgumentException("Transaction type not supported");
+    }
   }
 
   private List<TransactionGroupedByBaseDto> convertToGroupedDto(
