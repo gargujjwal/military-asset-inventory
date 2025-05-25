@@ -29,6 +29,7 @@ import com.gargujjwal.military_asset_management.repository.BaseRepository;
 import com.gargujjwal.military_asset_management.repository.EquipmentInventoryRepository;
 import com.gargujjwal.military_asset_management.repository.EquipmentInventoryTransactionRepository;
 import com.gargujjwal.military_asset_management.repository.TransferTransactionRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -101,9 +102,13 @@ public class EquipmentInventoryTransactionService {
 
     // verify whether the user can create transaction for current base
     User loggedInUser = userService.getLoggedInUser();
-    if (!(loggedInUser.isAdmin()
-        || baseService.getUserAssignedBase(loggedInUser.getUsername()).id().equals(baseId))) {
-      throw new UnauthorizedException("You are not authorized to create transaction for this base");
+    // if base id equals current then change it
+    if (baseId.equals("current") && !loggedInUser.isAdmin()) {
+      baseId = baseService.getUserAssignedBase(loggedInUser.getUsername()).id();
+    }
+
+    if (transactionDto.getTransactionDate() == null) {
+      transactionDto.setTransactionDate(LocalDateTime.now());
     }
 
     Base base =
@@ -147,6 +152,7 @@ public class EquipmentInventoryTransactionService {
 
     // update or create inventory
     inv = equipmentInventoryRepository.save(inv);
+    equipment = inv.getEquipment();
 
     switch (transactionDto.getTransactionType()) {
       case ASSIGNMENT:
@@ -221,7 +227,7 @@ public class EquipmentInventoryTransactionService {
               .transactionType(transactionDto.getTransactionType())
               .quantityChanged(transactionDto.getQuantityChange())
               .doneBy(loggedInUser.getFullName())
-              .equipmentName(equipment.getName())
+              .equipmentName(equipment.getName() == null ? equipment.getId() : equipment.getName())
               .build());
 
     } catch (Exception e) {

@@ -2,7 +2,9 @@ package com.gargujjwal.military_asset_management.service;
 
 import com.gargujjwal.military_asset_management.dto.AccessTokenResponse;
 import com.gargujjwal.military_asset_management.dto.LoginRequest;
+import com.gargujjwal.military_asset_management.dto.LoginResponse;
 import com.gargujjwal.military_asset_management.dto.PasswordChangeReq;
+import com.gargujjwal.military_asset_management.dto.SuccessResponse;
 import com.gargujjwal.military_asset_management.dto.UserDto;
 import com.gargujjwal.military_asset_management.entity.User;
 import com.gargujjwal.military_asset_management.exception.ConflictingResourceException;
@@ -12,6 +14,7 @@ import com.gargujjwal.military_asset_management.mapper.UserMapper;
 import com.gargujjwal.military_asset_management.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,7 +36,7 @@ public class AuthService {
   private final JWTService jwtService;
   private final UserMapper userMapper;
 
-  public AccessTokenResponse login(LoginRequest loginRequest, HttpServletResponse response) {
+  public LoginResponse login(LoginRequest loginRequest, HttpServletResponse response) {
     log.info("Login request for user: {}", loginRequest.username());
     UserDetails user = userService.loadUserByUsername(loginRequest.username());
     if (user == null) throw new ResourceNotFoundException("User not found");
@@ -48,16 +51,17 @@ public class AuthService {
     Cookie refreshTokenCookie = createRefreshTokenCookie(refreshToken);
     response.addCookie(refreshTokenCookie);
 
-    return new AccessTokenResponse(accessToken);
+    return new LoginResponse(accessToken, userMapper.toDto((User) user));
   }
 
-  public void logout(HttpServletResponse response) {
+  public SuccessResponse<Object> logout(HttpServletResponse response) {
     // get rid of the refresh token cookie
     Cookie refreshTokenCookie = createRefreshTokenCookie("");
     refreshTokenCookie.setMaxAge(0); // Set the cookie to expire immediately
     response.addCookie(refreshTokenCookie);
 
     SecurityContextHolder.clearContext();
+    return new SuccessResponse<>(null, LocalDateTime.now());
   }
 
   public AccessTokenResponse refreshSession(String refreshToken) {
@@ -75,7 +79,7 @@ public class AuthService {
   public UserDto getCurrentUser() {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth == null || !(auth.getPrincipal() instanceof User)) {
-      throw new ResourceNotFoundException("User not found");
+      throw new UnauthorizedException("No Logged in user found");
     }
 
     return userMapper.toDto((User) auth.getPrincipal());
@@ -87,7 +91,7 @@ public class AuthService {
     User user = (User) userService.loadUserByUsername(username);
     // see if old password matches
     if (!passwordEncoder.matches(passwordChangeReq.oldPassword(), user.getPasswordHash())) {
-      throw new UnauthorizedException("Old password does not match for user: " + username);
+      throw new BadCredentialsException("Old password does not match for user: " + username);
     }
 
     // update password

@@ -9,6 +9,9 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import { TanstackQueryProvider } from "./context/tanstack-query-context";
+import { AuthProvider } from "./context/auth-context";
+import { Toaster } from "react-hot-toast";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -32,8 +35,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body>
-        {children}
+      <body className="text-black">
+        <Toaster />
+        <TanstackQueryProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </TanstackQueryProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

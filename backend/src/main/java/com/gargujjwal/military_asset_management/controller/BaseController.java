@@ -40,6 +40,11 @@ public class BaseController {
     baseService.createBase(newBase);
   }
 
+  @GetMapping(path = "/assigned", consumes = MediaType.ALL_VALUE)
+  BaseDto getUserAssignedBase() {
+    return baseService.getLoggedInUserAssignedBase();
+  }
+
   @DeleteMapping(path = "/{id}", consumes = MediaType.ALL_VALUE)
   void deleteBase(@Valid @NotBlank @PathVariable String id) {
     baseService.deleteBase(id);

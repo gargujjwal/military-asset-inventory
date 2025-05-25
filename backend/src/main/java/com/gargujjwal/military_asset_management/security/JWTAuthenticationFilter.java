@@ -46,6 +46,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
       }
     } catch (Exception ex) {
       log.error("Authentication failed, ex: {}", ex.getClass().getSimpleName());
+      SecurityContextHolder.clearContext();
     }
 
     filterChain.doFilter(request, response);

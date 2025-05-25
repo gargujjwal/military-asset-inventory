@@ -2,6 +2,7 @@ package com.gargujjwal.military_asset_management.advice;
 
 import com.gargujjwal.military_asset_management.dto.ErrorResponse;
 import com.gargujjwal.military_asset_management.exception.ConflictingResourceException;
+import com.gargujjwal.military_asset_management.exception.ForbiddenActionException;
 import com.gargujjwal.military_asset_management.exception.InvalidRequestException;
 import com.gargujjwal.military_asset_management.exception.InvalidTokenException;
 import com.gargujjwal.military_asset_management.exception.InventoryNotEnoughException;
@@ -344,6 +345,12 @@ public class ErrorResponseAdvice extends ResponseEntityExceptionHandler {
   protected ResponseEntity<Object> handleUnauthorizedException(UnauthorizedException ex) {
     var error = new ErrorResponse("Unauthorized", List.of(ex.getMessage()));
     return buildResponseEntity(error, HttpStatus.UNAUTHORIZED);
+  }
+
+  @ExceptionHandler(ForbiddenActionException.class)
+  protected ResponseEntity<Object> handleForbiddenActionException(ForbiddenActionException ex) {
+    var error = new ErrorResponse("Forbidden", List.of(ex.getMessage()));
+    return buildResponseEntity(error, HttpStatus.FORBIDDEN);
   }
 
   @ExceptionHandler(InvalidRequestException.class)

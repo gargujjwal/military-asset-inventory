@@ -28,7 +28,6 @@ public class BaseService {
   private final UserService userService;
   private final TransferTransactionRepository transferTransactionRepository;
 
-  @PreAuthorize("hasRole('ADMIN')")
   public List<BaseDto> getAllBases() {
     return baseMapper.toDtoList(baseRepository.findAll());
   }
@@ -90,6 +89,11 @@ public class BaseService {
     UserBaseAssignment newAssignment =
         UserBaseAssignment.builder().isActive(true).user(user).base(base).build();
     ubAssignmentRepository.save(newAssignment);
+  }
+
+  public BaseDto getLoggedInUserAssignedBase() {
+    User loggedInUser = userService.getLoggedInUser();
+    return getUserAssignedBase(loggedInUser.getUsername());
   }
 
   public BaseDto getUserAssignedBase(String username) {

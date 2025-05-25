@@ -42,7 +42,7 @@ public class EquipmentController {
     equipmentService.createEquipmentCategory(newEquipmentCategory);
   }
 
-  @PostMapping("/categories/{categoryId}")
+  @PostMapping("/categories/{categoryId}/equipments")
   void createEquipment(
       @Valid @RequestBody EquipmentDto newEquipment,
       @Valid @NotBlank @PathVariable String categoryId) {

@@ -2,7 +2,9 @@ package com.gargujjwal.military_asset_management.controller;
 
 import com.gargujjwal.military_asset_management.dto.AccessTokenResponse;
 import com.gargujjwal.military_asset_management.dto.LoginRequest;
+import com.gargujjwal.military_asset_management.dto.LoginResponse;
 import com.gargujjwal.military_asset_management.dto.PasswordChangeReq;
+import com.gargujjwal.military_asset_management.dto.SuccessResponse;
 import com.gargujjwal.military_asset_management.dto.UserDto;
 import com.gargujjwal.military_asset_management.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,14 +32,13 @@ public class AuthController {
   private final AuthService authService;
 
   @PostMapping("/login")
-  AccessTokenResponse login(
-      @Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
+  LoginResponse login(@Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
     return authService.login(loginRequest, response);
   }
 
   @GetMapping(path = "/logout", consumes = MediaType.ALL_VALUE)
-  void logout(HttpServletResponse response) {
-    authService.logout(response);
+  SuccessResponse<Object> logout(HttpServletResponse response) {
+    return authService.logout(response);
   }
 
   @GetMapping(path = "/refresh-access-token", consumes = MediaType.ALL_VALUE)

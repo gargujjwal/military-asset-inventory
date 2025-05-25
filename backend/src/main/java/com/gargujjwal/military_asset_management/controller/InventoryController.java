@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -50,8 +51,10 @@ public class InventoryController {
 
   @GetMapping(path = "/transactions/filtered", consumes = MediaType.ALL_VALUE)
   List<TransactionGroupedByBaseDto> getFilteredTransactions(
-      @RequestParam(required = false) LocalDateTime startDate,
-      @RequestParam(required = false) LocalDateTime endDate,
+      @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+          LocalDateTime startDate,
+      @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+          LocalDateTime endDate,
       @RequestParam(required = false) String baseId,
       @RequestParam(required = false) String equipmentCategoryId,
       @RequestParam(required = false) String equipmentId) {
@@ -63,6 +66,7 @@ public class InventoryController {
             .equipmentCategoryId(equipmentCategoryId)
             .equipmentId(equipmentId)
             .build();
+    log.error(filter.toString());
     return inventoryTransactionService.getFilteredTransactions(filter);
   }
 
