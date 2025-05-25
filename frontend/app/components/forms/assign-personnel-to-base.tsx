@@ -83,7 +83,7 @@ export default function AssignPersonnelToBaseForm() {
           {userQuery.data.data
             .filter((u) => u.role !== "ADMIN")
             .map((user) => (
-              <option key={user.id} value={user.id}>
+              <option key={user.id} value={user.username}>
                 {user.fullName}
               </option>
             ))}

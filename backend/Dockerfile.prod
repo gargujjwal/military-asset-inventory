@@ -19,5 +19,10 @@ VOLUME /tmp
 # Copy the JAR from the build stage
 COPY --from=build /app/target/*.jar app.jar
 ENV SERVER_PORT=10000
-ENTRYPOINT ["java","-jar","/app.jar"]
+ENTRYPOINT ["/bin/sh", "-c", "\
+  echo $TRUSTSTORE_BASE64 | base64 -d > /app/truststore.jks && \
+  java \
+  -Djavax.net.ssl.trustStore=/app/truststore.jks \
+  -Djavax.net.ssl.trustStorePassword=changeit \
+  -jar app.jar"]
 EXPOSE 10000
