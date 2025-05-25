@@ -35,7 +35,7 @@ public class WebSecurityConfiguration {
   @Value("${spring.profiles.active:default}")
   private String activeProfile;
 
-  @Value("${app.cors.allowed-origins:}")
+  @Value("${app.cors.allowedorigins:}")
   private List<String> allowedOrigins;
 
   @Bean
