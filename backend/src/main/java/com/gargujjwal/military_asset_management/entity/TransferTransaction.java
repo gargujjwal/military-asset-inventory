@@ -1,12 +1,14 @@
 package com.gargujjwal.military_asset_management.entity;
 
 import com.gargujjwal.military_asset_management.constants.TransferType;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
@@ -40,6 +42,10 @@ public class TransferTransaction extends InventoryTransaction {
 
   @Column(name = "notes")
   private String notes;
+
+  @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+  @JoinColumn(name = "inverse_transaction_id", referencedColumnName = "id")
+  private TransferTransaction inverseTransaction;
 
   @PostLoad
   private void setTransferType() {

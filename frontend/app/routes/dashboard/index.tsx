@@ -26,8 +26,9 @@ export default function DashboardPage() {
     data: dashboardData,
     isLoading,
     error,
+    refetch,
   } = useQuery({
-    queryKey: hasFilter ? ["dashboard", "filtered", filter] : ["dashboard"],
+    queryKey: hasFilter ? ["dashboard", "filtered"] : ["dashboard"],
     queryFn: () =>
       hasFilter
         ? filteredDashboardQuery.mutationFn(filter)
@@ -36,6 +37,7 @@ export default function DashboardPage() {
 
   const handleFilter = (newFilter: InventoryTransactionFilter) => {
     setFilter(newFilter);
+    refetch();
     setHasFilter(Object.keys(newFilter).length > 0);
   };
 

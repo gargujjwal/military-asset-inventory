@@ -8,6 +8,7 @@ import {
   createTransactionMutation,
 } from "~/lib/tanstack-query";
 import {
+  Role,
   TransactionType,
   TransferType,
   type TransferTransactionDto,
@@ -64,7 +65,17 @@ export default function TransferTransactionForm() {
     };
     // @ts-ignore
     delete transactionData.baseId;
-    createTransaction({ baseId: data.baseId, transaction: transactionData });
+    let baseId: string;
+    if (user.role !== Role.ADMIN) {
+      baseId = "current";
+    } else {
+      baseId =
+        data.type === TransferType.IN ? data.destBase.id : data.sourceBase.id;
+    }
+    createTransaction({
+      baseId,
+      transaction: transactionData,
+    });
   };
 
   return (
@@ -132,9 +143,7 @@ export default function TransferTransactionForm() {
             <select
               {...register(
                 transferType === "IN" ? "sourceBase.id" : "destBase.id",
-                {
-                  required: "Base is required",
-                }
+                { required: "Base is required" }
               )}
               className={`select select-bordered w-full ${
                 errors.sourceBase?.id || errors.destBase?.id
@@ -181,10 +190,12 @@ export default function TransferTransactionForm() {
         {user.role === "ADMIN" && (
           <div>
             <label className="block text-sm font-medium text-base-content mb-1">
-              Base
+              {transferType === "IN" ? "Destination Base" : "Source Base"}
             </label>
             <select
-              {...register("baseId")}
+              {...register(
+                transferType === "IN" ? "destBase.id" : "sourceBase.id"
+              )}
               className="select select-bordered w-full"
             >
               {baseQuery.isSuccess &&

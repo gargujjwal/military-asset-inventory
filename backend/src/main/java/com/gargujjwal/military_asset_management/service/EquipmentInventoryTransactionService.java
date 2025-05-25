@@ -2,6 +2,7 @@ package com.gargujjwal.military_asset_management.service;
 
 import com.gargujjwal.military_asset_management.constants.Role;
 import com.gargujjwal.military_asset_management.constants.TransactionType;
+import com.gargujjwal.military_asset_management.constants.TransferType;
 import com.gargujjwal.military_asset_management.dto.AssignmentTransactionDto;
 import com.gargujjwal.military_asset_management.dto.BaseDto;
 import com.gargujjwal.military_asset_management.dto.ExpenditureTransactionDto;
@@ -20,7 +21,9 @@ import com.gargujjwal.military_asset_management.entity.InventoryTransaction;
 import com.gargujjwal.military_asset_management.entity.PurchaseTransaction;
 import com.gargujjwal.military_asset_management.entity.TransferTransaction;
 import com.gargujjwal.military_asset_management.entity.User;
-import com.gargujjwal.military_asset_management.exception.*;
+import com.gargujjwal.military_asset_management.exception.InvalidRequestException;
+import com.gargujjwal.military_asset_management.exception.InventoryNotEnoughException;
+import com.gargujjwal.military_asset_management.exception.ResourceNotFoundException;
 import com.gargujjwal.military_asset_management.filter.InventoryTransactionSpecification;
 import com.gargujjwal.military_asset_management.mapper.BaseMapper;
 import com.gargujjwal.military_asset_management.mapper.EquipmentMapper;
@@ -28,8 +31,6 @@ import com.gargujjwal.military_asset_management.mapper.InventoryTransactionMappe
 import com.gargujjwal.military_asset_management.repository.BaseRepository;
 import com.gargujjwal.military_asset_management.repository.EquipmentInventoryRepository;
 import com.gargujjwal.military_asset_management.repository.EquipmentInventoryTransactionRepository;
-import com.gargujjwal.military_asset_management.repository.TransferTransactionRepository;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -52,7 +53,6 @@ public class EquipmentInventoryTransactionService {
   private final EquipmentInventoryRepository equipmentInventoryRepository;
   private final EquipmentMapper equipmentMapper;
   private final AuditService auditService;
-  private final TransferTransactionRepository transferTransactionRepository;
 
   @PreAuthorize("hasRole('ADMIN')")
   @Transactional(readOnly = true)
@@ -94,10 +94,148 @@ public class EquipmentInventoryTransactionService {
             .toList());
   }
 
+  private TransferTransaction createInverseTransaction(TransferTransaction transaction) {
+    TransferTransaction inverseTransaction =
+        TransferTransaction.builder()
+            .sourceBase(transaction.getDestBase())
+            .destBase(transaction.getSourceBase())
+            .notes(transaction.getNotes())
+            .build();
+    inverseTransaction.setDoneBy(transaction.getDoneBy());
+    inverseTransaction.setQuantityChange(transaction.getQuantityChange());
+    Optional<EquipmentInventory> inv =
+        equipmentInventoryRepository.findByBaseAndEquipment(
+            transaction.getDestBase(), transaction.getInventory().getEquipment());
+    EquipmentInventory inventory;
+    if (inv.isPresent()) {
+      inventory = inv.get();
+      inventory.setClosingBalance(inventory.getClosingBalance() + transaction.getQuantityChange());
+      inverseTransaction.setInventory(inventory);
+    } else {
+      inventory =
+          EquipmentInventory.builder()
+              .openingBalance(transaction.getQuantityChange())
+              .closingBalance(transaction.getQuantityChange())
+              .equipment(transaction.getInventory().getEquipment())
+              .base(transaction.getDestBase())
+              .build();
+    }
+    inverseTransaction.setInventory(equipmentInventoryRepository.save(inventory));
+    inverseTransaction.setResultingBalance(
+        inventory.getClosingBalance() + transaction.getQuantityChange());
+
+    inverseTransaction.setInverseTransaction(transaction);
+    return inverseTransaction;
+  }
+
+  private void createTransferTransaction(TransferTransaction transaction) {
+    // set transaction type
+    transaction.setType(transaction.getQuantityChange() > 0 ? TransferType.IN : TransferType.OUT);
+
+    // set source base and dest base
+    Base srcBase, destBase;
+    User loggedInUser = userService.getLoggedInUser();
+    if (loggedInUser.isAdmin()) {
+      srcBase = transaction.getSourceBase();
+      destBase = transaction.getDestBase();
+    } else {
+      Base assignedBase =
+          baseMapper.toEntity(baseService.getUserAssignedBase(loggedInUser.getUsername()));
+      if (transaction.getType().equals(TransferType.IN)) {
+        // transfer in
+        srcBase = transaction.getSourceBase();
+        destBase = assignedBase;
+      } else {
+        // transfer out
+        srcBase = assignedBase;
+        destBase = transaction.getDestBase();
+      }
+    }
+    transaction.setSourceBase(srcBase);
+    transaction.setDestBase(destBase);
+
+    // check inventory of source base
+    EquipmentInventory srcBaseInventory =
+        equipmentInventoryRepository
+            .findByBaseAndEquipment(srcBase, transaction.getInventory().getEquipment())
+            .orElseThrow(
+                () ->
+                    new InventoryNotEnoughException(
+                        "Source base does not have inventory of equipment"));
+    if (srcBaseInventory.getClosingBalance() < Math.abs(transaction.getQuantityChange())) {
+      throw new InventoryNotEnoughException("Source base does not have enough inventory");
+    }
+
+    // create or update inventory
+    EquipmentInventory destBaseInventory =
+        equipmentInventoryRepository
+            .findByBaseAndEquipment(destBase, transaction.getInventory().getEquipment())
+            .orElse(
+                EquipmentInventory.builder()
+                    .openingBalance(0)
+                    .closingBalance(0)
+                    .base(destBase)
+                    .equipment(transaction.getInventory().getEquipment())
+                    .build());
+    if (transaction.getType().equals(TransferType.IN)) {
+      srcBaseInventory.setClosingBalance(
+          srcBaseInventory.getClosingBalance() + transaction.getQuantityChange());
+      destBaseInventory.setClosingBalance(
+          destBaseInventory.getClosingBalance() - transaction.getQuantityChange());
+    } else {
+      srcBaseInventory.setClosingBalance(
+          srcBaseInventory.getClosingBalance() - transaction.getQuantityChange());
+      destBaseInventory.setClosingBalance(
+          destBaseInventory.getClosingBalance() + transaction.getQuantityChange());
+    }
+    srcBaseInventory = equipmentInventoryRepository.save(srcBaseInventory);
+    destBaseInventory = equipmentInventoryRepository.save(destBaseInventory);
+    if (transaction.getType().equals(TransferType.IN)) {
+      transaction.setInventory(srcBaseInventory);
+    } else {
+      transaction.setInventory(destBaseInventory);
+    }
+
+    // create inverse transaction record
+    TransferTransaction inverseTrans =
+        TransferTransaction.builder()
+            .sourceBase(destBase)
+            .destBase(srcBase)
+            .notes(String.format("Assets transferred to/from %s", srcBase.getName()))
+            .inverseTransaction(transaction)
+            .build();
+    inverseTrans.setQuantityChange(transaction.getQuantityChange() * -1);
+    if (transaction.getType().equals(TransferType.IN)) {
+      inverseTrans.setResultingBalance(destBaseInventory.getClosingBalance());
+      inverseTrans.setInventory(destBaseInventory);
+    } else {
+      inverseTrans.setResultingBalance(srcBaseInventory.getClosingBalance());
+      inverseTrans.setInventory(srcBaseInventory);
+    }
+    inverseTrans.setDoneBy(loggedInUser);
+
+    // set inverse transaction to current transaction
+    transaction.setInverseTransaction(inverseTrans);
+
+    inventoryTransactionRepository.save(transaction);
+  }
+
   @Transactional
   public void createTransaction(InventoryTransactionDto transactionDto, String baseId) {
     if (transactionDto.getQuantityChange().equals(0)) {
       throw new InvalidRequestException("Quantity change can't be 0");
+    }
+
+    if (transactionDto.getTransactionType().equals(TransactionType.TRANSFER)) {
+      TransferTransaction trans =
+          inventoryTransactionMapper.toTransferTransactionEntity(
+              (TransferTransactionDto) transactionDto);
+      trans.setInventory(
+          EquipmentInventory.builder()
+              .equipment(equipmentMapper.toEntity(transactionDto.getEquipment()))
+              .build());
+      createTransferTransaction(trans);
+      return;
     }
 
     // verify whether the user can create transaction for current base
@@ -105,10 +243,6 @@ public class EquipmentInventoryTransactionService {
     // if base id equals current then change it
     if (baseId.equals("current") && !loggedInUser.isAdmin()) {
       baseId = baseService.getUserAssignedBase(loggedInUser.getUsername()).id();
-    }
-
-    if (transactionDto.getTransactionDate() == null) {
-      transactionDto.setTransactionDate(LocalDateTime.now());
     }
 
     Base base =
@@ -186,6 +320,16 @@ public class EquipmentInventoryTransactionService {
         TransferTransaction transferTransaction =
             inventoryTransactionMapper.toTransferTransactionEntity(
                 (TransferTransactionDto) transactionDto);
+        if (!loggedInUser.isAdmin()) {
+          BaseDto userAssignedBbase = baseService.getUserAssignedBase(loggedInUser.getUsername());
+          if (transferTransaction.getQuantityChange() < 0) {
+            // transfer out
+            transferTransaction.setSourceBase(baseMapper.toEntity(userAssignedBbase));
+          } else {
+            // transfer in
+            transferTransaction.setDestBase(baseMapper.toEntity(userAssignedBbase));
+          }
+        }
         // can't move assets to same base
         if (transferTransaction.getDestBase().equals(transferTransaction.getSourceBase())) {
           throw new InvalidRequestException("Destination base can't be same as source base");
@@ -199,20 +343,8 @@ public class EquipmentInventoryTransactionService {
         transferTransaction.setResultingBalance(currentBalance);
         transferTransaction.setDoneBy(loggedInUser);
         transferTransaction.setInventory(inv);
+        transferTransaction.setInverseTransaction(createInverseTransaction(transferTransaction));
         inventoryTransactionRepository.save(transferTransaction);
-
-        // create transfer transaction for other base too
-        // reverse the quantity change
-        InventoryTransaction trans =
-            TransferTransaction.builder()
-                .sourceBase(transferTransaction.getDestBase())
-                .destBase(transferTransaction.getSourceBase())
-                .notes(transferTransaction.getNotes())
-                .build();
-        trans.setDoneBy(loggedInUser);
-        trans.setQuantityChange(transferTransaction.getQuantityChange());
-        createTransaction(
-            inventoryTransactionMapper.toDto(trans), transferTransaction.getDestBase().getId());
         break;
       default:
         throw new IllegalArgumentException(
@@ -250,45 +382,29 @@ public class EquipmentInventoryTransactionService {
             transaction.getInventory().getClosingBalance() - transaction.getQuantityChange());
     equipmentInventoryRepository.save(transaction.getInventory());
 
-    // delete the transaction
-    inventoryTransactionRepository.delete(transaction);
-
-    // flow of application should not stop cuz i couldn't log
-    try {
-      User loggedInUser = userService.getLoggedInUser();
-      auditService.saveAuditLog(
-          AuditLog.builder()
-              .action("CREATE")
-              .transactionType(getTransactionType(transaction))
-              .quantityChanged(transaction.getQuantityChange())
-              .doneBy(loggedInUser.getFullName())
-              .equipmentName(transaction.getInventory().getEquipment().getName())
-              .build());
-    } catch (Exception e) {
-      log.warn("Error while saving audit log", e);
-    }
-
     if (transaction instanceof TransferTransaction) {
       // delete the other transaction too
       TransferTransaction ttrans = (TransferTransaction) transaction;
-      transferTransactionRepository
-          .findBySourceBaseAndDestBaseAndQuantityChangeAndDoneByAndInventory_EquipmentAndInventory_Base(
-              ttrans.getDestBase(),
-              ttrans.getSourceBase(),
-              ttrans.getQuantityChange() * -1,
-              ttrans.getDoneBy(),
-              ttrans.getInventory().getEquipment(),
-              ttrans.getInventory().getBase())
-          .ifPresentOrElse(
-              transferTransactionRepository::delete,
-              () ->
-                  log.warn(
-                      "Transfer transaction not found for source base: {}, dest base: {}, quantity:"
-                          + " {}",
-                      ttrans.getSourceBase().getName(),
-                      ttrans.getDestBase().getName(),
-                      ttrans.getQuantityChange() * -1));
+      var inverseTrans = ttrans.getInverseTransaction();
+      inverseTrans
+          .getInventory()
+          .setClosingBalance(
+              inverseTrans.getInventory().getClosingBalance() - inverseTrans.getQuantityChange());
+      equipmentInventoryRepository.save(inverseTrans.getInventory());
     }
+
+    // delete the transaction
+    inventoryTransactionRepository.delete(transaction);
+
+    User loggedInUser = userService.getLoggedInUser();
+    auditService.saveAuditLog(
+        AuditLog.builder()
+            .action("CREATE")
+            .transactionType(getTransactionType(transaction))
+            .quantityChanged(transaction.getQuantityChange())
+            .doneBy(loggedInUser.getFullName())
+            .equipmentName(transaction.getInventory().getEquipment().getName())
+            .build());
   }
 
   private TransactionType getTransactionType(InventoryTransaction trans) {

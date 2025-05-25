@@ -49,6 +49,7 @@ export default function TransactionFilter({ initialFilter, onFilter }: Props) {
       )
     );
     setFilter(filteredData);
+    filterQuery.refetch();
     reset();
   };
 

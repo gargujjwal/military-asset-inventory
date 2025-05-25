@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "inventory_transactions")
@@ -35,6 +36,7 @@ public abstract class InventoryTransaction {
   @EqualsAndHashCode.Include
   protected String id;
 
+  @CreationTimestamp
   @Column(name = "transaction_date", nullable = false, updatable = false)
   protected LocalDateTime transactionDate;
 

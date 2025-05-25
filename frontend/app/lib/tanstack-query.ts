@@ -72,7 +72,7 @@ export const getFilteredTransactionsQuery = (
   filter: InventoryTransactionFilter
 ) =>
   ({
-    queryKey: ["transactions", "filtered", filter],
+    queryKey: ["transactions", "filtered"],
     queryFn: () => getFilteredTransactions(filter),
   } as const);
 
@@ -80,13 +80,13 @@ export const createTransactionMutation = {
   mutationKey: ["createTransaction"],
   mutationFn: (dat: { baseId: string; transaction: InventoryTransactionDto }) =>
     createTransaction(dat.baseId, dat.transaction),
-  invalidateKeys: ["transactions", "dashboard"],
+  invalidateKeys: ["transactions", "dashboard", "filtered"],
 } as const;
 
 export const deleteTransactionMutation = {
   mutationKey: ["deleteTransaction"],
   mutationFn: deleteTransactions,
-  invalidateKeys: ["transactions", "dashboard"],
+  invalidateKeys: ["transactions", "dashboard", "filtered"],
 } as const;
 
 /* Equipment */

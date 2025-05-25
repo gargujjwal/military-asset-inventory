@@ -22,7 +22,6 @@ export default function TransactionTableWithFilter({ initialFilter }: Props) {
       <TransactionFilter
         initialFilter={initialFilter}
         onFilter={(filteredTrans) => {
-          console.log("here");
           setTransactions(filteredTrans);
         }}
       />
