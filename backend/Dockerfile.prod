@@ -23,5 +23,5 @@ COPY --from=build /app/target/*.jar app.jar
 ENV SERVER_PORT=10000
 
 # Start the application
-ENTRYPOINT ["java", "-jar", "/app/app.jar", "-Djava.net.preferIPv4Stack=true"]
+ENTRYPOINT ["java", "-Djava.net.preferIPv4Stack=true", "-jar", "/app/app.jar"]
 EXPOSE 10000
