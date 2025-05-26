@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
@@ -35,6 +36,9 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final JWTService jwtService;
   private final UserMapper userMapper;
+
+  @Value("${spring.profiles.active:default}")
+  private String activeProfile;
 
   public LoginResponse login(LoginRequest loginRequest, HttpServletResponse response) {
     log.info("Login request for user: {}", loginRequest.username());
@@ -121,6 +125,9 @@ public class AuthService {
     refreshTokenCookie.setPath("/");
     refreshTokenCookie.setHttpOnly(true);
     refreshTokenCookie.setSecure(false);
+    if ("prod".equals(activeProfile)) {
+      refreshTokenCookie.setSecure(true);
+    }
     return refreshTokenCookie;
   }
 }
