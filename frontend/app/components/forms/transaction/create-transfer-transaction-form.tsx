@@ -62,6 +62,13 @@ export default function TransferTransactionForm() {
           location: "current",
           createdAt: "",
         };
+      } else {
+        transactionData.sourceBase = {
+          id: "current",
+          name: "current",
+          location: "current",
+          createdAt: "",
+        };
       }
     }
 
