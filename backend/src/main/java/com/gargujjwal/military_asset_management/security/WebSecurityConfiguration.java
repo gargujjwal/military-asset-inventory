@@ -87,18 +87,15 @@ public class WebSecurityConfiguration {
     CorsConfiguration configuration = new CorsConfiguration();
 
     if ("dev".equals(activeProfile)) {
-      // Development configuration - more permissive
+      // Development configuration
       configuration.setAllowedOriginPatterns(
           Arrays.asList("http://localhost:*", "http://127.0.0.1:*", "https://localhost:*"));
-      configuration.setAllowedMethods(Arrays.asList("*"));
-      configuration.setAllowedHeaders(Arrays.asList("*"));
     } else {
-      // Production configuration - restrictive
+      // Production configuration
       configuration.setAllowedOrigins(allowedOrigins);
-      configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH"));
-      configuration.setAllowedHeaders(
-          Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept"));
     }
+    configuration.setAllowedMethods(Arrays.asList("*"));
+    configuration.setAllowedHeaders(Arrays.asList("*"));
 
     configuration.setAllowCredentials(true);
     configuration.setMaxAge(3600L);
