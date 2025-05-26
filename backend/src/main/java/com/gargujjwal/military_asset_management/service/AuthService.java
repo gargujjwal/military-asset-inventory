@@ -12,12 +12,13 @@ import com.gargujjwal.military_asset_management.exception.ResourceNotFoundExcept
 import com.gargujjwal.military_asset_management.exception.UnauthorizedException;
 import com.gargujjwal.military_asset_management.mapper.UserMapper;
 import com.gargujjwal.military_asset_management.repository.UserRepository;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
@@ -52,17 +53,18 @@ public class AuthService {
 
     // Set the refresh token in a cookie
     String refreshToken = jwtService.generateRefreshToken(user);
-    Cookie refreshTokenCookie = createRefreshTokenCookie(refreshToken);
-    response.addCookie(refreshTokenCookie);
+    ResponseCookie refreshTokenCookie = createRefreshTokenCookie(refreshToken);
+    response.setHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
     return new LoginResponse(accessToken, userMapper.toDto((User) user));
   }
 
   public SuccessResponse<Object> logout(HttpServletResponse response) {
     // get rid of the refresh token cookie
-    Cookie refreshTokenCookie = createRefreshTokenCookie("");
-    refreshTokenCookie.setMaxAge(0); // Set the cookie to expire immediately
-    response.addCookie(refreshTokenCookie);
+    ResponseCookie refreshTokenCookie = createRefreshTokenCookie("");
+    // Set the cookie to expire immediately
+    refreshTokenCookie = refreshTokenCookie.mutate().maxAge(0).build();
+    response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
     SecurityContextHolder.clearContext();
     return new SuccessResponse<>(null, LocalDateTime.now());
@@ -119,15 +121,13 @@ public class AuthService {
     userRepository.save(user);
   }
 
-  private Cookie createRefreshTokenCookie(String refreshToken) {
-    Cookie refreshTokenCookie = new Cookie("refresh-token", refreshToken);
-    refreshTokenCookie.setMaxAge(JWTService.REFRESH_TOKEN_VALIDITY_IN_SECS);
-    refreshTokenCookie.setPath("/");
-    refreshTokenCookie.setHttpOnly(true);
-    refreshTokenCookie.setSecure(false);
-    if ("prod".equals(activeProfile)) {
-      refreshTokenCookie.setSecure(true);
-    }
-    return refreshTokenCookie;
+  private ResponseCookie createRefreshTokenCookie(String refreshToken) {
+    return ResponseCookie.from("refresh-token", refreshToken)
+        .maxAge(JWTService.REFRESH_TOKEN_VALIDITY_IN_SECS)
+        .path("/")
+        .httpOnly(true)
+        .secure("prod".equals(activeProfile))
+        .sameSite("none")
+        .build();
   }
 }
