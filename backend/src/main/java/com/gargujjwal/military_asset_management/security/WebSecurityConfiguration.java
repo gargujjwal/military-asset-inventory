@@ -95,7 +95,7 @@ public class WebSecurityConfiguration {
     } else {
       // Production configuration - restrictive
       configuration.setAllowedOrigins(allowedOrigins);
-      configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
+      configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH"));
       configuration.setAllowedHeaders(
           Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept"));
     }
