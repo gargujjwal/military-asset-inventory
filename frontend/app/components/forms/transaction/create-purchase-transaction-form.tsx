@@ -13,7 +13,7 @@ import {
 } from "~/types/backend-stubs";
 import { ApiError } from "~/utils/error";
 
-type PurchaseTransactionForm = PurchaseTransactionDto & {
+type TForm = PurchaseTransactionDto & {
   baseId: string;
 };
 
@@ -29,7 +29,7 @@ export default function PurchaseTransactionForm() {
     setError,
     clearErrors,
     setValue,
-  } = useForm<PurchaseTransactionForm>({
+  } = useForm<TForm>({
     defaultValues: {
       baseId: user.role === "ADMIN" ? "" : "current",
     },
@@ -50,7 +50,7 @@ export default function PurchaseTransactionForm() {
     },
   });
   const allEquipments = useAllEquipments();
-  const onSubmit = (data: PurchaseTransactionForm) => {
+  const onSubmit = (data: TForm) => {
     clearErrors();
     const transactionData = {
       ...data,

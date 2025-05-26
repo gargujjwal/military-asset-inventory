@@ -43,7 +43,7 @@ public class TransferTransaction extends InventoryTransaction {
   @Column(name = "notes")
   private String notes;
 
-  @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+  @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, optional = true)
   @JoinColumn(name = "inverse_transaction_id", referencedColumnName = "id")
   private TransferTransaction inverseTransaction;
 

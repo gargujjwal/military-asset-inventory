@@ -1,11 +1,11 @@
-import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import FormError from "~/components/ui/form-error";
 import { useAuthenticatedUser } from "~/context/auth-context";
 import useAllEquipments from "~/hooks/use-all-equipments";
 import {
-  getAllBasesQuery,
   createTransactionMutation,
+  getAllBasesQuery,
 } from "~/lib/tanstack-query";
 import {
   Role,
@@ -15,12 +15,8 @@ import {
 } from "~/types/backend-stubs";
 import { ApiError } from "~/utils/error";
 
-type TForm = TransferTransactionDto & {
-  baseId: string;
-};
 export default function TransferTransactionForm() {
   const queryClient = useQueryClient();
-
   const { user } = useAuthenticatedUser();
   const {
     register,
@@ -30,12 +26,7 @@ export default function TransferTransactionForm() {
     formState: { errors },
     setError,
     clearErrors,
-  } = useForm<TForm>({
-    defaultValues: {
-      baseId: user.role === "ADMIN" ? "" : "current",
-    },
-  });
-
+  } = useForm<TransferTransactionDto>();
   const transferType = watch("type");
   const baseQuery = useQuery(getAllBasesQuery);
   const { mutate: createTransaction, isPending } = useMutation({
@@ -53,7 +44,7 @@ export default function TransferTransactionForm() {
     },
   });
   const allEquipments = useAllEquipments();
-  const onSubmit = (data: TForm) => {
+  const onSubmit = (data: TransferTransactionDto) => {
     clearErrors();
     const transactionData = {
       ...data,
@@ -63,17 +54,19 @@ export default function TransferTransactionForm() {
           ? Math.abs(Number(data.quantityChange))
           : -Math.abs(Number(data.quantityChange)),
     };
-    // @ts-ignore
-    delete transactionData.baseId;
-    let baseId: string;
     if (user.role !== Role.ADMIN) {
-      baseId = "current";
-    } else {
-      baseId =
-        data.type === TransferType.IN ? data.destBase.id : data.sourceBase.id;
+      if (data.type === TransferType.IN) {
+        transactionData.destBase = {
+          id: "current",
+          name: "current",
+          location: "current",
+          createdAt: "",
+        };
+      }
     }
+
     createTransaction({
-      baseId,
+      baseId: "current",
       transaction: transactionData,
     });
   };

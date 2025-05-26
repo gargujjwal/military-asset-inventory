@@ -42,6 +42,7 @@ public interface InventoryTransactionMapper {
   @Mapping(target = "inventory", ignore = true)
   PurchaseTransaction toPurchaseTransactionEntity(PurchaseTransactionDto dto);
 
+  @Mapping(target = "inverseTransaction", ignore = true)
   @Mapping(target = "inventory", ignore = true)
   @Mapping(target = "type", ignore = true)
   TransferTransaction toTransferTransactionEntity(TransferTransactionDto dto);

@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useAuthenticatedUser } from "~/context/auth-context";
 import type {
   BaseDto,
   EquipmentCategoryDto,
@@ -18,9 +19,9 @@ export function DashboardFilter({
   equipmentCategories,
   isLoading,
 }: DashboardFilterProps) {
+  const { user } = useAuthenticatedUser();
   const { register, handleSubmit, reset } =
     useForm<InventoryTransactionFilter>();
-
   const onSubmit = (data: InventoryTransactionFilter) => {
     // Remove empty values
     const filteredData = Object.fromEntries(
@@ -30,7 +31,6 @@ export function DashboardFilter({
     );
     onFilter(filteredData);
   };
-
   const handleClear = () => {
     reset();
     onFilter({});
@@ -68,23 +68,24 @@ export function DashboardFilter({
               className="input input-bordered w-full"
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-base-content mb-2">
-              Base
-            </label>
-            <select
-              {...register("baseId")}
-              className="select select-bordered w-full"
-            >
-              <option value="">All Bases</option>
-              {bases.map((base) => (
-                <option key={base.id} value={base.id}>
-                  {base.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {user.role === "ADMIN" && (
+            <div>
+              <label className="block text-sm font-medium text-base-content mb-2">
+                Base
+              </label>
+              <select
+                {...register("baseId")}
+                className="select select-bordered w-full"
+              >
+                <option value="">All Bases</option>
+                {bases.map((base) => (
+                  <option key={base.id} value={base.id}>
+                    {base.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-base-content mb-2">

@@ -25,7 +25,11 @@ export default function AssignmentTransactionForm() {
     formState: { errors },
     setError,
     clearErrors,
-  } = useForm<TForm>();
+  } = useForm<TForm>({
+    defaultValues: {
+      baseId: user.role === "ADMIN" ? "" : "current",
+    },
+  });
   const equipment = useAllEquipments();
   const baseQuery = useQuery(getAllBasesQuery);
   const { mutate: createTransaction, isPending } = useMutation({
