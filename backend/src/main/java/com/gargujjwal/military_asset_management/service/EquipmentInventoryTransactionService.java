@@ -5,6 +5,7 @@ import com.gargujjwal.military_asset_management.dto.BaseDto;
 import com.gargujjwal.military_asset_management.dto.InventoryTransactionDto;
 import com.gargujjwal.military_asset_management.dto.InventoryTransactionFilter;
 import com.gargujjwal.military_asset_management.dto.TransactionGroupedByBaseDto;
+import com.gargujjwal.military_asset_management.entity.AuditLog;
 import com.gargujjwal.military_asset_management.entity.InventoryTransaction;
 import com.gargujjwal.military_asset_management.entity.TransferTransaction;
 import com.gargujjwal.military_asset_management.entity.User;
@@ -36,6 +37,7 @@ public class EquipmentInventoryTransactionService {
   private final UserService userService;
   private final BaseService baseService;
   private final TransactionCreateDeleteStrategyFactory transactionCreateDeleteStrategyFactory;
+  private final AuditService auditService;
 
   @PreAuthorize("hasRole('ADMIN')")
   @Transactional(readOnly = true)
@@ -93,6 +95,20 @@ public class EquipmentInventoryTransactionService {
         throw new InvalidRequestException("Invalid transaction type");
     }
     strategy.createTransaction(transactionDto, baseId);
+
+    // create audit log
+    String equipmentInfo =
+        transactionDto.getEquipment().name() == null
+            ? transactionDto.getEquipment().id()
+            : transactionDto.getEquipment().name();
+    auditService.saveAuditLog(
+        AuditLog.builder()
+            .action("CREATE")
+            .transactionType(transactionDto.getTransactionType().toString())
+            .quantityChanged(transactionDto.getQuantityChange())
+            .doneBy(userService.getLoggedInUser().getFullName())
+            .equipmentName(equipmentInfo)
+            .build());
   }
 
   @Transactional
@@ -112,6 +128,16 @@ public class EquipmentInventoryTransactionService {
           transactionCreateDeleteStrategyFactory.getStrategy(
               "assignmentPurchaseExpenditureTransactionCreateDeleteStrategy");
     }
+
+    // create audit log
+    auditService.saveAuditLog(
+        AuditLog.builder()
+            .action("DELETE")
+            .transactionType(transaction.getClass().getTypeName())
+            .quantityChanged(transaction.getQuantityChange())
+            .doneBy(userService.getLoggedInUser().getFullName())
+            .equipmentName(transaction.getInventory().getEquipment().getName())
+            .build());
 
     strategy.deleteTransaction(transaction);
   }

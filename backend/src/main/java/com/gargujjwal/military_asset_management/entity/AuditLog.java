@@ -1,6 +1,5 @@
 package com.gargujjwal.military_asset_management.entity;
 
-import com.gargujjwal.military_asset_management.constants.TransactionType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -36,7 +35,7 @@ public class AuditLog {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "transaction_type", nullable = false, updatable = false)
-  private TransactionType transactionType;
+  private String transactionType;
 
   @Column(name = "quantity_changed", nullable = false, updatable = false)
   private Integer quantityChanged;
